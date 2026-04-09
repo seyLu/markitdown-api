@@ -1,0 +1,57 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi[standard-no-fastapi-cloud-cli]>=0.129.0",
+  "scalar-fastapi>=1.7.0",
+  "sqlmodel>=0.0.34",
+  "tzdata>=2025.3",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "ruff>=0.15.1",
+    "ty>=0.0.17",
+]
+
+[tool.fastapi]
+entrypoint = "src.main:app"
+
+[tool.ruff.lint]
+select = [
+  "A",      # flake8-builtins
+  "B",      # flake8-bugbear
+  "S",      # flake8-bandit
+  "C4",     # flake8-comprehensions
+  "ANN",    # flake8-annotations
+  "ARG001", # flake8 unused-function-arguments
+  "E",      # pycodestyle
+  "F",      # pyflakes
+  "I",      # isort
+  "PL",     # pylint
+  "UP",     # pyupgrade
+  "T201",   # print statements are not allowed
+  "RUF",    # ruff-specific rules
+  "FAST",   # fastAPI
+]
+ignore = [
+  "E501",   # line too long, handled by ruff
+  "B904",   # allow raising exceptions without from e, for HTTPException
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/*router.py" = [
+  "ANN401",
+  "PLR0913" # allow many args in function definitions, eg: multiple query params
+]
+"**/service.py" = [
+  "PLR0913" # allow many args in function definitions, eg: multiple query params
+]
+
+
+[tool.ty.rules]
+invalid-type-form = "ignore" # allow function calls in type expressions, eg: Annotated[str, Query()]
