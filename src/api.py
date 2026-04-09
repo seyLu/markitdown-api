@@ -2,6 +2,8 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel
 
+from src.markitdown.router import router as markitdown_router
+
 
 class ErrorMessage(SQLModel):
     """Represents a single error message."""
@@ -27,6 +29,8 @@ api_router = APIRouter(
 )
 
 public_api_router = APIRouter()
+
+public_api_router.include_router(markitdown_router)
 
 
 @api_router.get("/healthcheck", include_in_schema=False)
