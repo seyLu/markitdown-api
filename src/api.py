@@ -30,7 +30,9 @@ api_router = APIRouter(
 
 public_api_router = APIRouter()
 
-public_api_router.include_router(markitdown_router)
+public_api_router.include_router(
+    markitdown_router, prefix="/markitdown", tags=["markitdown"]
+)
 
 
 @api_router.get("/healthcheck", include_in_schema=False)

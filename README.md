@@ -34,6 +34,12 @@ It is inspired by [Netflix/dispatch](https://github.com/Netflix/dispatch) and th
 
 <br>
 
+### Requirements
+
+- Audio/Video Conversion - [ffmpeg](https://ffmpeg.org/download.html)
+
+<br>
+
 ### Developing locally
 
 > NOTE: This project uses [uv](https://docs.astral.sh/uv/getting-started/installation/). Make sure it is installed before proceeding.
