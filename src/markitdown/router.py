@@ -1,60 +1,92 @@
+import asyncio
 import logging
 import tempfile
 from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from markitdown import MarkItDown, StreamInfo
 from src.markitdown.models import ConvertResponse
 
 router = APIRouter()
-
 md = MarkItDown()
 
 
-@router.post("/convert", response_model=ConvertResponse)
-async def convert_file(
-    file: Annotated[UploadFile | None, File()] = None,
-    url: Annotated[str | None, Form()] = None,
+def perform_conversion(
+    md_instance: MarkItDown, source: str | bytes, **kwargs: Any
 ) -> Any:
-    if not file and not url:
-        raise HTTPException(status_code=400, detail="Provide file or url")
+    """
+    Synchronous wrapper to be run in a thread pool.
+    """
+    return md_instance.convert(source, **kwargs)  # ty: ignore[invalid-argument-type]
 
+
+async def process_url(url: str) -> ConvertResponse:
     try:
-        if url:
-            result = md.convert(url)
+        result = await run_in_threadpool(perform_conversion, md, url)
+        return ConvertResponse(
+            source="url",
+            filename=None,
+            title=result.title,
+            content=result.markdown,
+            content_type="text/html",
+        )
+    except Exception as e:
+        logging.error(f"Error converting URL {url}: {e}")
+        raise e
+
+
+async def process_file(file: UploadFile) -> ConvertResponse:
+    try:
+        with tempfile.NamedTemporaryFile(delete=True) as tmp:
+            contents = await file.read()
+            tmp.write(contents)
+            tmp.flush()
+
+            result = await run_in_threadpool(
+                perform_conversion,
+                md,
+                tmp.name,
+                stream_info=StreamInfo(
+                    filename=file.filename,
+                    mimetype=file.content_type,
+                ),
+            )
+
             return ConvertResponse(
-                source="url",
-                filename=None,
+                source="file",
+                filename=file.filename,
                 title=result.title,
                 content=result.markdown,
-                content_type="text/html",
+                content_type=file.content_type,
             )
-            return {"source": "url", "content": result.text_content}
-
-        if file:
-            with tempfile.NamedTemporaryFile(delete=True) as tmp:
-                contents = await file.read()
-                tmp.write(contents)
-                tmp.flush()
-                tmp.seek(0)
-
-                result = md.convert(
-                    tmp.name,
-                    stream_info=StreamInfo(
-                        filename=file.filename,
-                        mimetype=file.content_type,
-                    ),
-                )
-
-                return ConvertResponse(
-                    source="file",
-                    filename=file.filename,
-                    title=result.title,
-                    content=result.markdown,
-                    content_type=file.content_type,
-                )
-
     except Exception as e:
-        logging.exception(e)
+        logging.error(f"Error converting file {file.filename}: {e}")
+        raise e
+
+
+@router.post("/convert", response_model=list[ConvertResponse])
+async def convert_multiple(
+    file: Annotated[list[UploadFile] | None, File()] = None,
+    url: Annotated[list[str] | None, Form()] = None,
+) -> Any:
+    if not file and not url:
+        raise HTTPException(status_code=400, detail="Provide at least one file or url")
+
+    tasks = []
+
+    if url:
+        for url_item in url:
+            tasks.append(process_url(url_item))
+
+    if file:
+        for file_item in file:
+            tasks.append(process_file(file_item))
+
+    try:
+        results = await asyncio.gather(*tasks, return_exceptions=False)
+        return results
+    except Exception as e:
+        logging.exception("Batch conversion failed")
         raise HTTPException(status_code=500, detail=str(e))
