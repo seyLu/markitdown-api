@@ -35,7 +35,7 @@ public_api_router.include_router(
 )
 
 
-@api_router.get("/healthcheck", include_in_schema=False)
+@api_router.get("/health-check", include_in_schema=False)
 async def healthcheck() -> dict[str, str]:
     """Simple healthcheck endpoint."""
     return {"status": "ok"}

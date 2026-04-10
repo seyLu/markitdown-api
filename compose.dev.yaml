@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+
+    restart: "no"
+    ports:
+      - "8000:8000"
+
+    command:
+      - fastapi
+      - run
+      - --reload
+      - "src/main.py"
+
+    env_file:
+      - .env
+    environment:
+      - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health-check"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

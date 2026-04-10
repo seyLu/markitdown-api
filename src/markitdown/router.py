@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
 from markitdown import MarkItDown, StreamInfo
-from src.markitdown.models import ConvertResponse
+from src.markitdown.models import ExtractResponse
 
 router = APIRouter()
 md = MarkItDown()
@@ -22,14 +22,14 @@ def perform_conversion(
     return md_instance.convert(source, **kwargs)  # ty: ignore[invalid-argument-type]
 
 
-async def process_url(url: str) -> ConvertResponse:
+async def process_url(url: str) -> ExtractResponse:
     try:
         result = await run_in_threadpool(perform_conversion, md, url)
-        return ConvertResponse(
+        return ExtractResponse(
             source="url",
             filename=None,
             title=result.title,
-            content=result.markdown,
+            markdown=result.markdown,
             content_type="text/html",
         )
     except Exception as e:
@@ -37,7 +37,7 @@ async def process_url(url: str) -> ConvertResponse:
         raise e
 
 
-async def process_file(file: UploadFile) -> ConvertResponse:
+async def process_file(file: UploadFile) -> ExtractResponse:
     try:
         with tempfile.NamedTemporaryFile(delete=True) as tmp:
             contents = await file.read()
@@ -54,11 +54,11 @@ async def process_file(file: UploadFile) -> ConvertResponse:
                 ),
             )
 
-            return ConvertResponse(
+            return ExtractResponse(
                 source="file",
                 filename=file.filename,
                 title=result.title,
-                content=result.markdown,
+                markdown=result.markdown,
                 content_type=file.content_type,
             )
     except Exception as e:
@@ -66,8 +66,8 @@ async def process_file(file: UploadFile) -> ConvertResponse:
         raise e
 
 
-@router.post("/convert", response_model=list[ConvertResponse])
-async def convert_multiple(
+@router.post("/extract", response_model=list[ExtractResponse])
+async def extract_multiple(
     file: Annotated[list[UploadFile] | None, File()] = None,
     url: Annotated[list[str] | None, Form()] = None,
 ) -> Any:
